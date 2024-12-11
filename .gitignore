@@ -29,7 +29,4 @@ bin/
 .DS_Store
 
 ### Project Specific ###
-Receive/*
-ReceiversPublicKeys/*
-Send/*
-keys.txt
+*.txt

@@ -22,7 +22,7 @@ public class CryptoUtils {
         try (FileWriter writer = new FileWriter(myKeysFilePath)) {
             writer.write("Public Key: " + PublicKey + "\n");
             writer.write("Private Key: " + Base64.getEncoder().encodeToString(pair.getPrivate().getEncoded()) + "\n");
-            try (FileWriter publicKeyWriter = new FileWriter("myContact/yourName.txt")) {
+            try (FileWriter publicKeyWriter = new FileWriter("myPublicKey.txt")) {
                 publicKeyWriter.write("Public Key: " + PublicKey + "\n");
             }
             System.out.println("New key generated and stored successfully\n");
@@ -41,11 +41,11 @@ public class CryptoUtils {
     }
 
     // Encrypt message, hash, and symmetric key
-    public static void encryptAndSaveToFile(String message, String recipientPubKeyFileName, String outputFolderName) throws Exception {
+    public static void encryptAndSaveToFile(String message, String recipientPubKeyFileName, String outputFileName) throws Exception {
 
         SecretKey symKey = generateSymmetricKey();
 
-        BufferedReader othersPublicKeyTxt = new BufferedReader(new FileReader("ReceiversPublicKeys/" + recipientPubKeyFileName + ".txt"));
+        BufferedReader othersPublicKeyTxt = new BufferedReader(new FileReader("myContacts/" + recipientPubKeyFileName + ".txt"));
         PublicKey recipientPubKey = stringToPublicKey(othersPublicKeyTxt.readLine().split(": ")[1]);
         othersPublicKeyTxt.close();
 
@@ -71,30 +71,32 @@ public class CryptoUtils {
         rsaCipher.init(Cipher.ENCRYPT_MODE, recipientPubKey);
         byte[] encryptedSymKey = rsaCipher.doFinal(symKey.getEncoded());
 
-        File folder = new File("Send/" + outputFolderName);
-        if(!folder.mkdir()) {
-            System.out.println("Folder creation failed.");
+        File file = new File("Send/" + outputFileName + ".txt");
+        if(file.exists()) {
+            System.out.println("Output file already exists!");
             return;
         }
 
-        try (FileWriter writer = new FileWriter("Send/" + outputFolderName + "/encrypted.txt")) {
-            writer.write(Base64.getEncoder().encodeToString(encryptedMessage) + "\n");
-            writer.write(Base64.getEncoder().encodeToString(encryptedHash) + "\n");
-            writer.write(Base64.getEncoder().encodeToString(encryptedSymKey) + "\n");
+        if(file.createNewFile()){
+            try (FileWriter writer = new FileWriter("Send/" + outputFileName + ".txt")) {
+                writer.write(Base64.getEncoder().encodeToString(encryptedMessage) + "\n");
+                writer.write(Base64.getEncoder().encodeToString(encryptedHash) + "\n");
+                writer.write(Base64.getEncoder().encodeToString(encryptedSymKey) + "\n");
+            }
+        }else {
+            System.err.println("Output file creation failed!");
         }
-        try (FileWriter publicKeyWriter = new FileWriter("Send/" + outputFolderName + "/publicKey.txt")) {
-            publicKeyWriter.write("Public Key: " + myPublicKeyString);
-        }
+
     }
 
     // Decrypt file and verify integrity
-    public static String decryptAndVerify(String inputFolder) throws Exception {
+    public static String decryptAndVerify(String encryptedMessageFileName, String sendersPublicKeyFileName) throws Exception {
         PublicKey senderPubKey = null;
         PrivateKey recipientPrivateKey = null;
         String encryptedMessage = null, encryptedHash = null, encryptedSymKey = null;
 
         // Handle sender's public key file
-        try (BufferedReader othersPublicKeyTxt = new BufferedReader(new FileReader("Receive/" + inputFolder + "/publicKey.txt"))) {
+        try (BufferedReader othersPublicKeyTxt = new BufferedReader(new FileReader("myContacts/" + sendersPublicKeyFileName + ".txt"))) {
             senderPubKey = stringToPublicKey(othersPublicKeyTxt.readLine().split(": ")[1]);
         } catch (FileNotFoundException e) {
             System.err.println("Sender's public key file not found.");
@@ -117,7 +119,7 @@ public class CryptoUtils {
         }
 
         // Handle input file
-        try (BufferedReader reader = new BufferedReader(new FileReader("Receive/" + inputFolder + "/encrypted.txt"))) {
+        try (BufferedReader reader = new BufferedReader(new FileReader("Receive/" + encryptedMessageFileName + ".txt"))) {
             encryptedMessage = reader.readLine();
             encryptedHash = reader.readLine();
             encryptedSymKey = reader.readLine();
@@ -150,10 +152,12 @@ public class CryptoUtils {
             MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
             byte[] computedHash = sha256.digest(message.getBytes());
 
+            System.out.println("Message : " + message);
+
             if (MessageDigest.isEqual(decryptedHash, computedHash)) {
-                return "Integrity verified. Message : \n" + message;
+                return "Integrity verified. Message is sent by " + sendersPublicKeyFileName + ".";
             } else {
-                return "Integrity check failed!";
+                return "Warning!!!! Integrity check failed! Message is not sent by " + sendersPublicKeyFileName + ".";
             }
         } catch (Exception e) {
             // Catch decryption or verification errors
