@@ -26,7 +26,7 @@ public class CryptoUtils {
                 publicKeyWriter.write("Public Key: " + PublicKey + "\n");
             }
             System.out.println("New key generated and stored successfully\n");
-            System.out.println("Find the 'yourName.txt' file in the 'myContact' directory, copy it in to another directory, rename it with your name and send it to the sender you wish to receive message from.");
+            System.out.println("Find the 'myPublicKey.txt' file in the root directory, rename it with your name and send it to the sender you wish to receive message from.");
         }
         catch (Exception e) {
             System.err.println("Failed to generate and store the AsymmetricKeys\n" + e.getMessage());
